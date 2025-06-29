@@ -1,0 +1,6 @@
+@Chefify.Api_HostAddress = http://localhost:5155
+
+GET {{Chefify.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

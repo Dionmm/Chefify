@@ -271,3 +271,6 @@ ehthumbs_vista.db
 .directory
 .Trash-*
 .nfs*
+
+# MCP Configuration (contains secrets)
+.mcp.json

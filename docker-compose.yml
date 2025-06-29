@@ -1,0 +1,86 @@
+services:
+  database:
+    image: postgres:15-alpine
+    container_name: chefify-db
+    environment:
+      POSTGRES_DB: chefify
+      POSTGRES_USER: chefify_user
+      POSTGRES_PASSWORD: chefify_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/00-init.sql
+      - ./recipes.sql:/docker-entrypoint-initdb.d/01-recipes.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chefify_user -d chefify"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.dev
+    container_name: chefify-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5000
+      ConnectionStrings__DefaultConnection: "Host=database;Port=5432;Database=chefify;Username=chefify_user;Password=chefify_password;"
+      OIDC__Authority: "https://your-oidc-provider.com"
+      OIDC__ClientId: "chefify-api"
+      OIDC__ClientSecret: "your-client-secret"
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./Chefify.Api:/app/Chefify.Api
+      - ./Chefify.Application:/app/Chefify.Application
+      - ./Chefify.Core:/app/Chefify.Core
+      - ./Chefify.Infrastructure:/app/Chefify.Infrastructure
+      - ./Chefify.sln:/app/Chefify.sln
+      - ./Directory.Build.props:/app/Directory.Build.props
+    depends_on:
+      database:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./Chefify.Api
+          target: /app/Chefify.Api
+        - action: sync
+          path: ./Chefify.Application
+          target: /app/Chefify.Application
+        - action: sync
+          path: ./Chefify.Core
+          target: /app/Chefify.Core
+        - action: sync
+          path: ./Chefify.Infrastructure
+          target: /app/Chefify.Infrastructure
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile.dev
+    container_name: chefify-frontend
+    environment:
+      REACT_APP_API_URL: http://localhost:5000
+      CHOKIDAR_USEPOLLING: true
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend/src
+          target: /app/src
+        - action: sync
+          path: ./frontend/public
+          target: /app/public
+
+volumes:
+  postgres_data:

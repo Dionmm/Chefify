@@ -1,0 +1,33 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+
+# Install dotnet watch tool
+RUN dotnet tool install --global dotnet-watch
+
+# Set working directory
+WORKDIR /app
+
+# Copy solution and project files for restore
+COPY *.sln ./
+COPY Directory.Build.props ./
+COPY Chefify.Api/*.csproj ./Chefify.Api/
+COPY Chefify.Application/*.csproj ./Chefify.Application/
+COPY Chefify.Core/*.csproj ./Chefify.Core/
+COPY Chefify.Infrastructure/*.csproj ./Chefify.Infrastructure/
+COPY Chefify.Tests/*.csproj ./Chefify.Tests/
+
+# Restore dependencies
+RUN dotnet restore
+
+# Copy the rest of the source code
+COPY . .
+
+# Expose port
+EXPOSE 5000
+
+# Set environment variables for development
+ENV ASPNETCORE_ENVIRONMENT=Development
+ENV ASPNETCORE_URLS=http://+:5000
+
+# Start the API with hot reload
+WORKDIR /app/Chefify.Api
+CMD ["dotnet", "watch", "run", "--urls", "http://0.0.0.0:5000", "--no-launch-profile"]
